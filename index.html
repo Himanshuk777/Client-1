@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nivesh Prime | Wealth Manager</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- Lottie Player -->
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --accent-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            --gold-gradient: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-highlight: rgba(255, 255, 255, 0.05);
+            --text-light: #f8fafc;
+            --text-dim: #94a3b8;
+            --bg-dark: #020617;
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; outline: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.2) 0%, transparent 40%);
+            color: var(--text-light);
+            min-height: 100vh; overflow-x: hidden;
+            padding-bottom: 90px;
+        }
+
+        /* --- Loading Screen --- */
+        #loader-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 9999; display: flex; justify-content: center; align-items: center;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        /* Smooth List Animation */
+        @keyframes fadeInUpList {
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .anim-fade-up {
+            animation: fadeInUpList 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* --- Components --- */
+        .glass-card {
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-top: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            overflow: hidden; transition: transform 0.3s;
+        }
+
+        .btn-primary {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            background: var(--primary-gradient); color: white;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+        }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* --- Banner --- */
+        .banner-container {
+            width: 100%; margin-bottom: 20px; border-radius: 16px; 
+            position: relative; overflow: hidden; background: rgba(255,255,255,0.05);
+            aspect-ratio: 2 / 1;
+        }
+        .banner-slide {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; transition: opacity 0.8s ease-in-out;
+            pointer-events: none;
+        }
+        .banner-slide.active { opacity: 1; z-index: 10; pointer-events: auto; }
+        .banner-slide img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* --- Auth Screen --- */
+        #auth-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5000; background: var(--bg-dark);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 30px;
+            background-image: url('https://img.freepik.com/free-vector/gradient-network-connection-background_23-2148879890.jpg');
+            background-size: cover; background-blend-mode: multiply;
+        }
+        .auth-container { width: 100%; max-width: 350px; text-align: center; animation: fadeIn 0.8s ease; }
+        .auth-tabs { display: flex; margin-bottom: 25px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 15px; }
+        .auth-tab { flex: 1; padding: 10px; color: var(--text-dim); cursor: pointer; border-radius: 10px; font-size: 0.9rem; }
+        .auth-tab.active { background: var(--glass-highlight); color: #fff; font-weight: 600; }
+        .input-group { position: relative; margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: var(--text-dim); margin-left: 5px; }
+        .input-field {
+            width: 100%; padding: 14px 14px 14px 40px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; color: white; outline: none;
+        }
+        .input-icon { position: absolute; left: 15px; top: 38px; color: var(--text-dim); font-size: 0.9rem; }
+
+        /* --- App Screens --- */
+        .app-view { display: none; }
+        .app-view.active { display: block; }
+        .section { display: none; padding: 20px; animation: fadeIn 0.5s ease; padding-bottom: 100px; }
+        .section.active { display: block; }
+
+        .sub-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark); z-index: 2000;
+            overflow-y: auto; padding: 20px;
+            display: none; animation: slideIn 0.3s ease;
+        }
+        .sub-screen.active { display: block; }
+        .screen-header { display: flex; align-items: center; margin-bottom: 25px; }
+        .back-btn { background: rgba(255,255,255,0.1); border: none; width: 35px; height: 35px; border-radius: 10px; color: white; display: flex; align-items: center; justify-content: center; margin-right: 15px; cursor: pointer; }
+
+        /* --- Header --- */
+        header {
+            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .user-block { display: flex; align-items: center; gap: 10px; }
+        .user-avatar-sm { width: 38px; height: 38px; border-radius: 50%; background: var(--gold-gradient); padding: 2px; }
+        .user-avatar-sm img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-dark); }
+
+        /* --- Home --- */
+        .balance-card {
+            padding: 20px; position: relative; margin-bottom: 20px;
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent),
+                        linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+        }
+        .balance-card h2 { font-size: 1.25rem; font-weight: 700; margin: 5px 0; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .balance-label { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .action-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+        .act-btn { padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; cursor: pointer; border: none; }
+        .act-primary { background: var(--text-light); color: var(--bg-dark); }
+        .act-glass { background: rgba(255,255,255,0.1); color: var(--text-light); border: 1px solid rgba(255,255,255,0.1); }
+
+        .quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .q-card {
+            background: rgba(255,255,255,0.03); border-radius: 16px; padding: 12px;
+            display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;
+            cursor: pointer;
+        }
+        .q-icon {
+            width: 36px; height: 36px; border-radius: 10px; font-size: 1rem; color: white;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* --- Plans --- */
+        .plan-tabs { 
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 15px; scrollbar-width: none; 
+            position: sticky; top: 73px; z-index: 50; background: transparent; padding-top: 10px; /* Transparent */
+        }
+        .p-tab { 
+            padding: 8px 16px; border-radius: 50px; background: rgba(255,255,255,0.05); 
+            color: var(--text-dim); white-space: nowrap; transition: 0.3s; 
+            font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); 
+            cursor: pointer;
+        }
+        .p-tab.active { background: var(--accent-gradient); color: white; font-weight: 600; border-color: transparent; }
+
+        .product-card { padding: 15px; margin-bottom: 15px; transform-style: preserve-3d; perspective: 1000px; display: block; }
+        .prod-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .prod-tags { display: flex; gap: 5px; }
+        .tag { font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+        .tag-vip { background: var(--gold-gradient); color: #4a3b00; }
+        .tag-cat { background: rgba(255,255,255,0.1); color: var(--text-light); }
+        
+        .data-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+        .d-item label { display: block; font-size: 0.6rem; color: var(--text-dim); margin-bottom: 2px; }
+        .d-item span { font-size: 0.9rem; font-weight: 600; color: #fff; }
+        .highlight { color: #3b82f6 !important; }
+
+        /* --- Team --- */
+        .commission-display { text-align: center; padding: 25px 15px; margin-bottom: 15px; }
+        .comm-val { font-size: 1.8rem; font-weight: 700; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .levels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .lvl-card { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .lvl-title { font-size: 0.6rem; color: var(--text-dim); margin-bottom: 3px; }
+        .lvl-val { font-size: 0.9rem; color: #38bdf8; font-weight: 600; }
+        .ref-card { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 12px 15px; background: rgba(6, 182, 212, 0.1); 
+            border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; margin-bottom: 10px;
+        }
+        .copy-btn { padding: 6px 12px; background: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.5); color: #22d3ee; border-radius: 6px; font-size: 0.7rem; font-weight: 600; }
+        .ref-list-container { margin-top: 20px; }
+        .ref-user-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); margin-bottom: 8px; border-radius: 10px; }
+        .ref-user-info p { font-size: 0.75rem; font-weight: 500; }
+        .ref-user-info span { font-size: 0.6rem; color: var(--text-dim); }
+        .load-more-btn { width: 100%; padding: 10px; background: rgba(255,255,255,0.05); color: var(--text-dim); border: none; border-radius: 10px; font-size: 0.8rem; cursor: pointer; margin-top: 10px; }
+
+        /* --- Profile --- */
+        .profile-hero { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .avatar-lg { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #f59e0b; padding: 3px; margin-bottom: 10px; position: relative; }
+        .avatar-lg img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #333; }
+        .vip-badge { position: absolute; bottom: 0; right: 0; background: var(--gold-gradient); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #78350f; font-size: 0.8rem; border: 2px solid var(--bg-dark); }
+        .vip-golden-card {
+            width: 100%; background: linear-gradient(135deg, #FFF7AD 0%, #FFA9F9 100%);
+            border-radius: 15px; padding: 15px; margin-top: 15px;
+            color: #5c4a06; position: relative; overflow: hidden;
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.15);
+        }
+        
+        .menu-list { margin-top: 20px; }
+        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .menu-left { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; }
+        .menu-icon { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 0.9rem; }
+
+        /* --- Community --- */
+        #community .glass-card { padding: 30px 15px; text-align: center; margin-top: 40px; }
+        #community h2 { font-size: 0.9rem; margin: 10px 0; }
+        #community p { font-size: 0.65rem; margin-bottom: 20px; }
+
+        /* --- Chips & Bank --- */
+        .chip-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .amt-chip { padding: 10px 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; text-align: center; font-size: 0.75rem; transition: 0.2s; cursor: pointer; }
+        .amt-chip.selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .bank-info-card { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .bank-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.8rem; }
+        .bank-label { color: var(--text-dim); }
+
+        /* --- Navbar --- */
+        .nav-bar {
+            position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
+            width: 92%; max-width: 450px; height: 65px;
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px);
+            border-radius: 40px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 25px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000;
+        }
+        .nav-icon { font-size: 1.3rem; color: #64748b; transition: 0.3s; cursor: pointer; padding: 10px; }
+        .nav-icon.active { color: #38bdf8; transform: translateY(-3px); }
+        .nav-center {
+            width: 55px; height: 55px; background: var(--primary-gradient);
+            border-radius: 50%; margin-top: -30px; border: 4px solid var(--bg-dark);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.3rem; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); cursor: pointer;
+        }
+        
+        /* --- Transactions Tab --- */
+        .trans-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .t-tab { padding: 10px; text-align: center; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 0.8rem; color: var(--text-dim); cursor: pointer; }
+        .t-tab.active { background: var(--primary-gradient); color: white; }
+        .trans-content { display: none; }
+        .trans-content.active { display: block; }
+
+        /* --- Modals (Common) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 6000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+
+        /* Spin Wheel Specific */
+        .wheel-outer { width: 300px; height: 300px; border-radius: 50%; background: #fff; padding: 5px; position: relative; }
+        .wheel-inner { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(#ef4444 0deg 45deg, #f97316 45deg 90deg, #f59e0b 90deg 135deg, #84cc16 135deg 180deg, #10b981 180deg 225deg, #06b6d4 225deg 270deg, #3b82f6 270deg 315deg, #a855f7 315deg 360deg); transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1); }
+        .wheel-pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 30px; height: 40px; background: #fff; clip-path: polygon(100% 0, 0 0, 50% 100%); z-index: 2; }
+        .spin-btn-lg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: var(--bg-dark); border: 3px solid #fff; border-radius: 50%; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; font-size: 0.8rem; }
+
+        /* Realistic Success Popup */
+        #success-modal .glass-card {
+            width: 85%; max-width: 340px; text-align: center; padding: 30px 20px;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .success-icon-box {
+            width: 70px; height: 70px; background: rgba(74, 222, 128, 0.1);
+            border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;
+            border: 2px solid rgba(74, 222, 128, 0.3);
+        }
+        .success-title { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
+        .success-msg { font-size: 0.85rem; color: #94a3b8; margin-bottom: 25px; line-height: 1.5; }
+
+        /* History List Item */
+        .history-item {
+            background: rgba(255,255,255,0.03); border-radius: 12px;
+            padding: 12px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loader-overlay">
+        <lottie-player src="https://ik.imagekit.io/lssafvcmr/Triangle%20loading.json" background="transparent" speed="1" style="width: 150px; height: 150px;" loop autoplay></lottie-player>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen">
+        <div class="auth-container">
+            <h1 style="font-weight: 700; margin-bottom: 5px; font-size: 1.8rem;">Nivesh<span style="color:#3b82f6">Prime</span></h1>
+            <p style="color:var(--text-dim); margin-bottom: 25px; font-size: 0.8rem;">Grow your wealth securely.</p>
+
+            <div class="glass-card" style="padding: 20px;">
+                <div class="auth-tabs">
+                    <div class="auth-tab active" onclick="toggleAuth('login', this)">Login</div>
+                    <div class="auth-tab" onclick="toggleAuth('signup', this)">Sign Up</div>
+                </div>
+
+                <div id="login-form">
+                    <div class="input-group"><label>Mobile Number</label><i class="fa-solid fa-phone input-icon"></i><input type="number" id="l-phone" class="input-field" placeholder="10 Digit Number"></div>
+                    <div class="input-group"><label>Password</label><i class="fa-solid fa-lock input-icon"></i><input type="password" id="l-password" class="input-field" placeholder="Enter password"></div>
+                    <button class="btn-primary" onclick="handleLogin()">Login Securely</button>
+                </div>
+
+                <div id="signup-form" style="display: none;">
+                    <div class="input-group"><label>Full Name</label><i class="fa-solid fa-user input-icon"></i><input type="text" id="s-username" class="input-field" placeholder="Your Name"></div>
+                    <div class="input-group"><label>Mobile Number</label><i class="fa-solid fa-phone input-icon"></i><input type="number" id="s-phone" class="input-field" placeholder="10 Digit Number"></div>
+                    <div class="input-group"><label>Password</label><i class="fa-solid fa-lock input-icon"></i><input type="password" id="s-password" class="input-field" placeholder="Create password"></div>
+                    <div class="input-group"><label>Confirm</label><i class="fa-solid fa-check-double input-icon"></i><input type="password" id="s-confirm" class="input-field" placeholder="Repeat password"></div>
+                    <div class="input-group"><label>Referral Code</label><i class="fa-solid fa-users input-icon"></i><input type="number" id="s-ref" class="input-field" placeholder="Optional"></div>
+                    <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-view" class="app-view">
+        
+        <!-- Header -->
+        <header>
+            <div class="user-block">
+                <div class="user-avatar-sm" onclick="switchTab('profile')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" id="header-pic" alt="User">
+                </div>
+                <div>
+                    <p style="font-size: 0.6rem; color: var(--text-dim); line-height: 1;">Welcome,</p>
+                    <h4 id="header-user" style="font-weight: 600; font-size: 0.9rem;">Loading...</h4>
+                </div>
+            </div>
+            <i class="fa-solid fa-bell" onclick="openScreen('notification-screen')" style="font-size: 1.1rem; color: white;"></i>
+        </header>
+
+        <!-- SECTION: HOME -->
+        <div id="home" class="section active">
+            <div class="banner-container" id="banner-container"></div>
+            <div class="glass-card balance-card">
+                <div class="balance-label">Total Balance</div>
+                <h2>₹<span id="home-balance">0.00</span></h2>
+                <div class="action-row">
+                    <button class="act-btn act-primary" onclick="openScreen('deposit-screen')">Deposit</button>
+                    <button class="act-btn act-glass" onclick="openScreen('withdraw-screen')">Withdraw</button>
+                </div>
+            </div>
+            <h3 style="margin-bottom: 12px; font-size: 0.9rem;">Quick Actions</h3>
+            <div class="quick-grid">
+                <div class="q-card" onclick="openScreen('deposit-screen')"><div class="q-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"><i class="fa-solid fa-wallet"></i></div><div><h4 style="font-size: 0.8rem;">Deposit</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Add Funds</p></div></div>
+                <div class="q-card" onclick="openScreen('task-screen')"><div class="q-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fa-solid fa-list-check"></i></div><div><h4 style="font-size: 0.8rem;">Task Hall</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Earn Daily</p></div></div>
+                <div class="q-card" onclick="openLink('telegram')"><div class="q-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);"><i class="fa-brands fa-telegram"></i></div><div><h4 style="font-size: 0.8rem;">Channel</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Join Group</p></div></div>
+                <div class="q-card" onclick="openWheel()"><div class="q-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><i class="fa-solid fa-dharmachakra"></i></div><div><h4 style="font-size: 0.8rem;">Spin</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Win Cash</p></div></div>
+            </div>
+        </div>
+
+        <!-- SECTION: TEAM -->
+        <div id="team" class="section">
+            <div class="banner-container" id="team-banner-container" style="display:none; aspect-ratio:2/1; margin-bottom:15px;">
+                <img id="team-banner-img" style="width:100%; height:100%; object-fit:cover; border-radius:15px;">
+            </div>
+            <div class="glass-card commission-display">
+                <p style="color: var(--text-dim); text-transform: uppercase; font-size: 0.6rem;">Total Commission</p>
+                <div class="comm-val">₹<span id="team-comm">0</span></div>
+            </div>
+            <div class="levels-grid">
+                 <div class="lvl-card"><div class="lvl-title">Level 1 (30%)</div><div class="lvl-val">0</div></div>
+                 <div class="lvl-card"><div class="lvl-title">Level 2 (2%)</div><div class="lvl-val">0</div></div>
+                 <div class="lvl-card"><div class="lvl-title">Level 3 (1%)</div><div class="lvl-val">0</div></div>
+             </div>
+            <div class="ref-card">
+                <div><p style="font-size: 0.65rem; color: var(--text-dim);">Referral Code</p><h3 id="ref-code-disp" style="font-size: 1rem;">LOADING</h3></div>
+                <button class="copy-btn" onclick="copyToClip('ref-code-disp')">COPY</button>
+            </div>
+            <div class="ref-card" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+                <div><p style="font-size: 0.65rem; color: var(--text-dim);">Share App</p><p id="app-link-disp" style="font-size: 0.7rem; width: 140px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #34d399;">Loading...</p></div>
+                <button class="copy-btn" style="color: #34d399; background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.5);" onclick="copyLink()">SHARE</button>
+            </div>
+            <h3 style="margin: 20px 0 10px; font-size: 0.9rem;">My Team</h3>
+            <div id="referral-list" class="ref-list-container"><div style="text-align:center; color: var(--text-dim); font-size:0.8rem;">Loading...</div></div>
+            <button id="load-more-team" class="load-more-btn" style="display:none;" onclick="loadMoreReferrals()">Load More</button>
+        </div>
+
+        <!-- SECTION: PLANS -->
+        <div id="plans" class="section">
+            <div class="plan-tabs">
+                <div class="p-tab active" onclick="filterPlans('all', this)">All</div>
+                <div class="p-tab" onclick="filterPlans('regular', this)">Regular</div>
+                <div class="p-tab" onclick="filterPlans('flexible', this)">Flexible</div>
+                <div class="p-tab" onclick="filterPlans('investment', this)">Investment</div>
+                <div class="p-tab" onclick="filterPlans('savings', this)">Savings</div>
+            </div>
+            <div id="plan-list-container"></div>
+            <div id="plan-list-empty" style="display:none; text-align:center; padding:50px; color: var(--text-dim); font-size: 0.8rem;">No plans available.</div>
+        </div>
+
+        <!-- SECTION: COMMUNITY -->
+        <div id="community" class="section">
+            <h3 style="margin-bottom: 15px;">Official Communities</h3>
+            <div class="quick-grid">
+                <!-- Telegram -->
+                <div class="q-card" onclick="openLink('telegram')">
+                    <div class="q-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);"><i class="fa-brands fa-telegram"></i></div>
+                    <div><h4 style="font-size: 0.8rem;">Telegram</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Join Channel</p></div>
+                </div>
+                <!-- Whatsapp -->
+                <div class="q-card" onclick="openLink('whatsapp')">
+                    <div class="q-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);"><i class="fa-brands fa-whatsapp"></i></div>
+                    <div><h4 style="font-size: 0.8rem;">WhatsApp</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Chat Now</p></div>
+                </div>
+                <!-- Facebook -->
+                <div class="q-card" onclick="openLink('facebook')">
+                    <div class="q-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);"><i class="fa-brands fa-facebook-f"></i></div>
+                    <div><h4 style="font-size: 0.8rem;">Facebook</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Follow Page</p></div>
+                </div>
+                <!-- Youtube -->
+                <div class="q-card" onclick="openLink('youtube')">
+                    <div class="q-icon" style="background: linear-gradient(135deg, #ef4444, #b91c1c);"><i class="fa-brands fa-youtube"></i></div>
+                    <div><h4 style="font-size: 0.8rem;">YouTube</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Watch Video</p></div>
+                </div>
+                <!-- Instagram -->
+                <div class="q-card" onclick="openLink('instagram')">
+                    <div class="q-icon" style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);"><i class="fa-brands fa-instagram"></i></div>
+                    <div><h4 style="font-size: 0.8rem;">Instagram</h4><p style="font-size: 0.6rem; color: var(--text-dim);">Follow Us</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: PROFILE -->
+        <div id="profile" class="section">
+            <div class="profile-hero">
+                <div class="avatar-lg">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" id="profile-pic" alt="User">
+                    <div class="vip-badge"><i class="fa-solid fa-crown"></i></div>
+                </div>
+                <h2 id="profile-name" style="font-size: 1.2rem;">User Name</h2>
+                <p style="color: var(--text-dim); font-size: 0.8rem;">+91 <span id="profile-phone-disp">**********</span></p>
+
+                <div class="vip-golden-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div><h2 style="margin-bottom: 3px; font-size: 1.1rem;">VIP <span id="vip-level-disp">0</span></h2><p style="font-size: 0.7rem; font-weight: 500;">Active Member</p></div>
+                        <i class="fa-solid fa-gem" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card menu-list" style="padding: 0;">
+                <!-- Change Name Button Above Deposit -->
+                <div class="menu-item" onclick="openNameModal()">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-pen-to-square"></i></div> Change Name</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+
+                <div class="menu-item" onclick="openScreen('deposit-screen')">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-wallet"></i></div> Deposit</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                <div class="menu-item" onclick="openScreen('withdraw-screen')">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-money-bill-transfer"></i></div> Withdraw</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                <div class="menu-item" onclick="openScreen('history-screen')">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-clock-rotate-left"></i></div> Transactions</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                <!-- ADDED HISTORY BUTTON BELOW TRANSACTIONS -->
+                <div class="menu-item" onclick="openScreen('earning-history-screen'); loadHistory()">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-chart-line"></i></div> History</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                
+                <div class="menu-item" onclick="openScreen('bank-screen')">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-building-columns"></i></div> Bank Card</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                <div class="menu-item" onclick="openScreen('password-screen')">
+                    <div class="menu-left"><div class="menu-icon"><i class="fa-solid fa-lock"></i></div> Change Password</div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+                </div>
+                <div class="menu-item" onclick="logout()">
+                    <div class="menu-left"><div class="menu-icon" style="color: #ef4444;"><i class="fa-solid fa-power-off"></i></div> Log Out</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB SCREENS -->
+        <div id="deposit-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('deposit-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Deposit</h3></div>
+            <div class="chip-container">
+                <div class="amt-chip" onclick="setAmount('dep-amount', 200, this)">₹200</div>
+                <div class="amt-chip" onclick="setAmount('dep-amount', 500, this)">₹500</div>
+                <div class="amt-chip" onclick="setAmount('dep-amount', 1000, this)">₹1000</div>
+                <div class="amt-chip" onclick="setAmount('dep-amount', 5000, this)">₹5000</div>
+            </div>
+            <div class="input-group"><label>Amount (₹)</label><input type="number" id="dep-amount" class="input-field" placeholder="Min ₹200"></div>
+            <button class="btn-primary" onclick="handleDepositClick()">Deposit Now</button>
+        </div>
+
+        <div id="withdraw-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('withdraw-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Withdraw</h3></div>
+            <div class="glass-card" style="padding: 15px; margin-bottom: 20px; text-align: center;"><p style="font-size:0.7rem;">Balance</p><h2 style="color:#3b82f6; font-size:1.2rem;">₹<span id="with-bal">0.00</span></h2></div>
+            <div class="bank-info-card" id="withdrawal-bank-card">
+                <h4 style="margin-bottom:10px; font-size:0.9rem;">Receiving Account</h4>
+                <div class="bank-row"><span class="bank-label">Name:</span> <span id="w-bank-name">--</span></div>
+                <div class="bank-row"><span class="bank-label">Acct:</span> <span id="w-bank-acc">--</span></div>
+                <div class="bank-row"><span class="bank-label">IFSC:</span> <span id="w-bank-ifsc">--</span></div>
+            </div>
+            <div class="chip-container">
+                <div class="amt-chip" onclick="setAmount('with-amount', 200, this)">₹200</div>
+                <div class="amt-chip" onclick="setAmount('with-amount', 500, this)">₹500</div>
+                <div class="amt-chip" onclick="setAmount('with-amount', 1000, this)">₹1000</div>
+                <div class="amt-chip" onclick="setAmount('with-amount', 5000, this)">₹5000</div>
+            </div>
+            <div class="input-group"><label>Amount</label><input type="number" id="with-amount" class="input-field"></div>
+            <button class="btn-primary" onclick="handleWithdrawClick()">Withdraw</button>
+        </div>
+
+        <div id="history-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('history-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Transactions</h3></div>
+            <div class="trans-tabs">
+                <div class="t-tab active" onclick="switchHistory('deposit', this)">Deposits</div>
+                <div class="t-tab" onclick="switchHistory('withdraw', this)">Withdrawals</div>
+            </div>
+            <div id="hist-deposit" class="trans-content active"><div style="text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:30px;">No deposits found.</div></div>
+            <div id="hist-withdraw" class="trans-content"><div style="text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:30px;">No withdrawals found.</div></div>
+        </div>
+
+        <!-- NEW EARNING HISTORY SCREEN -->
+        <div id="earning-history-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('earning-history-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>History</h3></div>
+            <div id="earning-list-container" style="padding-bottom:20px;">
+                <div style="text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:30px;">Loading history...</div>
+            </div>
+        </div>
+
+        <div id="task-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('task-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Tasks</h3></div>
+            <div id="task-list-container"></div>
+        </div>
+
+        <div id="bank-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('bank-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Bank</h3></div>
+            <div class="input-group"><label>Name</label><input type="text" class="input-field" id="bank-name"></div>
+            <div class="input-group"><label>Acct No</label><input type="text" class="input-field" id="bank-acc"></div>
+            <div class="input-group"><label>IFSC</label><input type="text" class="input-field" id="bank-ifsc"></div>
+            <button class="btn-primary" onclick="updateBank()">Save</button>
+        </div>
+
+        <div id="password-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('password-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Security</h3></div>
+            <div class="input-group"><label>New Pass</label><input type="password" class="input-field" id="new-pass"></div>
+            <div class="input-group"><label>Confirm</label><input type="password" class="input-field" id="conf-pass"></div>
+            <button class="btn-primary" onclick="updatePass()">Update</button>
+        </div>
+
+        <!-- UPDATED NOTIFICATION SCREEN WITH CLICK ACTION -->
+        <div id="notification-screen" class="sub-screen">
+            <div class="screen-header"><button class="back-btn" onclick="closeScreen('notification-screen')"><i class="fa-solid fa-arrow-left"></i></button><h3>Alerts</h3></div>
+            <div class="glass-card" style="padding:15px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="showWelcomeModal()">
+                <div><h4 style="font-size:0.8rem;">Welcome to Nivesh Prime</h4><p style="font-size:0.6rem; color:var(--text-dim)">Click to read important announcement.</p></div><span style="font-size:0.6rem;">Now</span>
+            </div>
+        </div>
+
+        <!-- NAV BAR -->
+        <nav class="nav-bar">
+            <i class="fa-solid fa-house nav-icon active" onclick="switchTab('home')"></i>
+            <i class="fa-solid fa-users-line nav-icon" onclick="switchTab('team')"></i>
+            <div class="nav-center" onclick="switchTab('plans')"><i class="fa-solid fa-rocket"></i></div>
+            <i class="fa-solid fa-comments nav-icon" onclick="switchTab('community')"></i>
+            <i class="fa-solid fa-user nav-icon" onclick="switchTab('profile')"></i>
+        </nav>
+    </div>
+
+    <!-- CUSTOM NAME MODAL -->
+    <div id="name-modal" class="modal-overlay">
+        <div class="glass-card" style="width: 85%; max-width: 320px; padding: 25px;">
+            <h3 style="margin-bottom: 15px; text-align:center;">Change Name</h3>
+            <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" id="edit-name-input" class="input-field" placeholder="Enter new name">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" style="background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);" onclick="document.getElementById('name-modal').style.display='none'">Cancel</button>
+                <button class="btn-primary" onclick="saveNewName()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUCCESS MODAL (REALISTIC POPUP) -->
+    <div id="success-modal" class="modal-overlay">
+        <div class="glass-card">
+            <div class="success-icon-box">
+                <i class="fa-solid fa-check" style="font-size: 2rem; color: #4ade80;"></i>
+            </div>
+            <h3 class="success-title" id="popup-title">Success</h3>
+            <p class="success-msg" id="popup-msg">Operation completed successfully.</p>
+            <button class="btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);" onclick="document.getElementById('success-modal').style.display='none'">Awesome</button>
+        </div>
+    </div>
+
+    <!-- WELCOME MODAL -->
+    <div id="welcome-modal" class="modal-overlay">
+        <div class="glass-card" style="width: 90%; max-width: 350px; text-align: left; padding: 20px;">
+            <h2 style="color:#fff; margin-bottom:15px; text-align:center;">Welcome Bonus</h2>
+            <div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; max-height: 300px; overflow-y:auto;">
+                <p>Welcome to <strong>Nivesh Prime</strong>, the most secure wealth management platform.</p>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>Free ₹50 signup bonus (limited time).</li>
+                    <li>Daily check-in rewards in Task Hall.</li>
+                    <li>Refer friends and earn 30% commission.</li>
+                    <li>Secure withdrawals within 24 hours.</li>
+                </ul>
+                <p>Start investing today and watch your wealth grow daily!</p>
+            </div>
+            <button class="btn-primary" style="margin-top:20px;" onclick="document.getElementById('welcome-modal').style.display='none'">Get Started</button>
+        </div>
+    </div>
+
+    <!-- SPIN WHEEL -->
+    <div id="wheel-modal" class="modal-overlay">
+        <h2 style="color:#ffd700; margin-bottom:10px;">Lucky Wheel</h2>
+        <div style="margin-bottom:20px; color:#fff; font-size:0.9rem;">Spins: <span id="spin-count">5</span></div>
+        <div class="wheel-outer">
+            <div class="wheel-pointer"></div>
+            <div class="wheel-inner" id="wheel"></div>
+            <div class="spin-btn-lg" onclick="spinWheel()">SPIN</div>
+        </div>
+        <button onclick="document.getElementById('wheel-modal').style.display='none'" style="margin-top:30px; padding:10px 25px; border-radius:20px; border:none;">Close</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDUy-6TMhgspHyPhJDmOyD2gR1gnJ_juRI",
+            authDomain: "client1-43498.firebaseapp.com",
+            databaseURL: "https://client1-43498-default-rtdb.firebaseio.com",
+            projectId: "client1-43498",
+            storageBucket: "client1-43498.firebasestorage.app",
+            messagingSenderId: "443562833927",
+            appId: "1:443562833927:web:36b4069d5b86a7402452a2",
+            measurementId: "G-3L30MSWXQ4"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let currentUser = null, userData = {}, globalLinks = { telegram: "#", whatsapp: "#", facebook: "#", youtube: "#", instagram: "#", app: "#" };
+        let teamList = [];
+        let teamLimit = 10;
+
+        window.onload = function() {
+            // Check for Referral Param
+            const urlParams = new URLSearchParams(window.location.search);
+            const refParam = urlParams.get('ref');
+            if(refParam) {
+                toggleAuth('signup', document.querySelectorAll('.auth-tab')[1]);
+                document.getElementById('s-ref').value = refParam;
+            }
+
+            const savedUser = localStorage.getItem('NiveshUserPhone');
+            if(savedUser) {
+                enterApp(savedUser);
+            } else {
+                document.getElementById('loader-overlay').style.display = 'none';
+            }
+        };
+
+        function toggleAuth(type, btn) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active')); btn.classList.add('active');
+            document.getElementById('login-form').style.display = type === 'login' ? 'block' : 'none';
+            document.getElementById('signup-form').style.display = type === 'signup' ? 'block' : 'none';
+        }
+
+        function handleLogin() {
+            const phone = document.getElementById('l-phone').value.trim();
+            const pass = document.getElementById('l-password').value.trim();
+            if(!phone || !pass) return alert('Empty fields');
+            
+            document.getElementById('loader-overlay').style.display = 'flex';
+            
+            db.ref('users/' + phone).once('value', s => {
+                if(s.exists() && s.val().password === pass) {
+                    localStorage.setItem('NiveshUserPhone', phone);
+                    enterApp(phone);
+                } else {
+                    document.getElementById('loader-overlay').style.display = 'none';
+                    alert('Invalid Credentials');
+                }
+            });
+        }
+
+        function handleSignup() {
+            const u = document.getElementById('s-username').value.trim();
+            const ph = document.getElementById('s-phone').value.trim();
+            const p = document.getElementById('s-password').value.trim();
+            const cp = document.getElementById('s-confirm').value.trim();
+            const ref = document.getElementById('s-ref').value.trim();
+            
+            if(!u || !ph || !p) return alert('Empty fields');
+            if(p !== cp) return alert('Passwords mismatch');
+            if(ph.length !== 10) return alert('Invalid Phone');
+
+            document.getElementById('loader-overlay').style.display = 'flex';
+
+            db.ref('users/' + ph).once('value', s => {
+                if(s.exists()) {
+                    document.getElementById('loader-overlay').style.display = 'none';
+                    alert('Phone already registered');
+                } else {
+                    if(ref) {
+                         db.ref('users').orderByChild('referralCode').equalTo(parseInt(ref)).once('value', snap => {
+                             if(snap.exists()) {
+                                 let uplineKey = Object.keys(snap.val())[0];
+                                 db.ref('users/' + uplineKey + '/referrals').push({
+                                     phone: ph, name: u, date: new Date().toDateString()
+                                 });
+                             }
+                             createUser(ph, u, p, ref || "root");
+                         });
+                    } else {
+                        createUser(ph, u, p, "root");
+                    }
+                }
+            });
+        }
+
+        function createUser(phone, name, pass, upline) {
+            db.ref('users/' + phone).set({
+                userName: name, phone: phone, password: pass, balance: 0, 
+                referralCode: Math.floor(100000+Math.random()*900000),
+                upline: upline, totalCommissions: 0, spinCount: 5, 
+                lastSpinDate: new Date().toDateString(), vipLevel: 0,
+                bankDetails: { name: "", acc: "", ifsc: "" }
+            }).then(() => { 
+                document.getElementById('loader-overlay').style.display = 'none';
+                alert('Success'); 
+                toggleAuth('login', document.querySelectorAll('.auth-tab')[0]); 
+            });
+        }
+
+        function enterApp(phone) {
+            currentUser = phone;
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-view').classList.add('active');
+            initListeners(); genPlans(); genTasks(); initBanner();
+        }
+
+        function initListeners() {
+            db.ref('users/' + currentUser).on('value', s => {
+                userData = s.val();
+                if(userData) {
+                    document.getElementById('header-user').innerText = userData.userName;
+                    document.getElementById('profile-name').innerText = userData.userName;
+                    document.getElementById('home-balance').innerText = parseFloat(userData.balance).toFixed(2);
+                    document.getElementById('with-bal').innerText = parseFloat(userData.balance).toFixed(2);
+                    document.getElementById('team-comm').innerText = userData.totalCommissions;
+                    document.getElementById('ref-code-disp').innerText = userData.referralCode;
+                    document.getElementById('profile-phone-disp').innerText = userData.phone;
+                    document.getElementById('vip-level-disp').innerText = userData.vipLevel || 0;
+
+                    const today = new Date().toDateString();
+                    if(userData.lastSpinDate !== today) {
+                        db.ref('users/' + currentUser).update({ spinCount: 5, lastSpinDate: today });
+                        document.getElementById('spin-count').innerText = 5;
+                    } else document.getElementById('spin-count').innerText = userData.spinCount;
+                    
+                    if(userData.bankDetails) {
+                        const b = userData.bankDetails;
+                        // Autofill Bank Screen
+                        document.getElementById('bank-name').value = b.name || "";
+                        document.getElementById('bank-acc').value = b.acc || "";
+                        document.getElementById('bank-ifsc').value = b.ifsc || "";
+                        // Fill Withdrawal Card
+                        document.getElementById('w-bank-name').innerText = b.name || "Not Set";
+                        document.getElementById('w-bank-acc').innerText = b.acc || "Not Set";
+                        document.getElementById('w-bank-ifsc').innerText = b.ifsc || "Not Set";
+                    }
+                    
+                    if(userData.referrals) {
+                        teamList = Object.values(userData.referrals);
+                        renderReferrals();
+                    } else {
+                        document.getElementById('referral-list').innerHTML = '<div style="text-align:center; color: var(--text-dim); font-size:0.8rem;">No referrals yet.</div>';
+                    }
+                    
+                    // Update App URL with Ref Code
+                    if(globalLinks.appOriginal) {
+                        const refLink = globalLinks.appOriginal + "?ref=" + userData.referralCode;
+                        document.getElementById('app-link-disp').innerText = refLink;
+                        globalLinks.app = refLink;
+                    }
+
+                    // Process Daily Earnings Logic
+                    processDailyEarnings();
+                }
+                document.getElementById('loader-overlay').style.display = 'none';
+            });
+            
+            // Fetch Community Links from Admin Node
+            db.ref('admin').on('value', s => {
+                const adminData = s.val() || {};
+                globalLinks.telegram = adminData.telegramURL || "#";
+                globalLinks.whatsapp = adminData.whatsappURL || "#";
+                globalLinks.facebook = adminData.facebookURL || "#";
+                globalLinks.youtube = adminData.youtubeURL || "#";
+                globalLinks.instagram = adminData.instagramURL || "#";
+            });
+
+            db.ref('appURL').on('value', s => { 
+                globalLinks.appOriginal = s.val(); 
+                if(userData.referralCode) {
+                    const refLink = s.val() + "?ref=" + userData.referralCode;
+                    document.getElementById('app-link-disp').innerText = refLink;
+                    globalLinks.app = refLink;
+                } else {
+                    document.getElementById('app-link-disp').innerText = s.val();
+                }
+            });
+            db.ref('teamBannerURL').on('value', s => {
+                if(s.val()) {
+                    document.getElementById('team-banner-container').style.display = 'block';
+                    document.getElementById('team-banner-img').src = s.val();
+                }
+            });
+            db.ref('banner').on('value', snap => {
+                const b = snap.val();
+                if(b) {
+                    const images = [b.banner1, b.banner2, b.banner3].filter(u => u);
+                    setupBanner(images);
+                }
+            });
+        }
+
+        // --- NEW LOGIC: DAILY EARNINGS ---
+        function processDailyEarnings() {
+            if(!userData.activePlans) return;
+            const now = Date.now();
+            let updated = false;
+            let totalAdd = 0;
+            let updates = {};
+
+            Object.keys(userData.activePlans).forEach(key => {
+                let plan = userData.activePlans[key];
+                // Check if 24 hours (86400000 ms) passed since last settlement
+                // And if plan still has days remaining
+                if(plan.daysLeft > 0 && now >= plan.nextSettlement) {
+                    // Calculate how many days passed (in case user missed a day login)
+                    // For simplicity in this demo, we just trigger one day at a time per login
+                    // to avoid complex catch-up logic on client side.
+                    
+                    const newBalance = parseFloat(userData.balance) + parseFloat(totalAdd) + parseFloat(plan.dailyIncome);
+                    totalAdd += parseFloat(plan.dailyIncome);
+
+                    // Update Plan Details
+                    updates['activePlans/' + key + '/daysLeft'] = plan.daysLeft - 1;
+                    updates['activePlans/' + key + '/nextSettlement'] = now + 86400000; // Set next run to 24 hours from NOW
+                    
+                    // Add History Record
+                    const pushId = db.ref('users/'+currentUser+'/history').push().key;
+                    updates['history/' + pushId] = {
+                        type: 'income',
+                        amount: plan.dailyIncome,
+                        desc: `Daily Income: Plan ${plan.level}`,
+                        date: new Date().toLocaleString()
+                    };
+                    
+                    updated = true;
+                }
+            });
+
+            if(updated) {
+                updates['balance'] = (parseFloat(userData.balance) + totalAdd).toFixed(2);
+                db.ref('users/'+currentUser).update(updates).then(() => {
+                    console.log("Daily earnings processed.");
+                });
+            }
+        }
+
+        function renderReferrals() {
+            const container = document.getElementById('referral-list');
+            const btn = document.getElementById('load-more-team');
+            container.innerHTML = '';
+            const listToShow = teamList.slice(0, teamLimit);
+            if(listToShow.length === 0) {
+                 container.innerHTML = '<div style="text-align:center; color: var(--text-dim); font-size:0.8rem;">No referrals yet.</div>';
+                 return;
+            }
+            listToShow.forEach(user => {
+                container.innerHTML += `
+                <div class="ref-user-item">
+                    <div class="ref-user-info"><p>${user.name}</p><span>${user.phone.substring(0,4)}****${user.phone.substring(8,10)}</span></div>
+                    <span style="font-size:0.7rem; color:var(--text-dim);">${user.date}</span>
+                </div>`;
+            });
+            btn.style.display = teamList.length > teamLimit ? 'block' : 'none';
+        }
+
+        function setupBanner(images) {
+            const container = document.getElementById('banner-container');
+            container.innerHTML = '';
+            images.forEach((url, i) => {
+                const img = document.createElement('img'); img.src = url;
+                const div = document.createElement('div');
+                div.className = 'banner-slide' + (i === 0 ? ' active' : '');
+                div.appendChild(img);
+                container.appendChild(div);
+            });
+            let idx = 0; const slides = document.querySelectorAll('.banner-slide');
+            setInterval(() => {
+                if(slides.length > 1) {
+                    slides[idx].classList.remove('active');
+                    idx = (idx + 1) % slides.length;
+                    slides[idx].classList.add('active');
+                }
+            }, 3000);
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.sub-screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-icon').forEach(i => i.classList.remove('active'));
+            if(id === 'home') document.querySelectorAll('.nav-icon')[0].classList.add('active');
+            if(id === 'team') document.querySelectorAll('.nav-icon')[1].classList.add('active');
+            if(id === 'community') document.querySelectorAll('.nav-icon')[2].classList.add('active');
+            if(id === 'profile') document.querySelectorAll('.nav-icon')[3].classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function openScreen(id) { document.getElementById(id).classList.add('active'); }
+        function closeScreen(id) { document.getElementById(id).classList.remove('active'); }
+        function switchHistory(type, btn) {
+            document.querySelectorAll('.t-tab').forEach(t => t.classList.remove('active')); btn.classList.add('active');
+            document.querySelectorAll('.trans-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(type === 'deposit' ? 'hist-deposit' : 'hist-withdraw').classList.add('active');
+        }
+        function setAmount(id, val, btn) {
+            document.getElementById(id).value = val;
+            btn.parentElement.querySelectorAll('.amt-chip').forEach(c => c.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function genPlans() {
+            const prices = [499, 799, 999, 1499, 1999, 2999, 4999, 9999, 24999, 49999];
+            let html = '';
+            // Plan Logic: 
+            // Plan 1-2: Regular
+            // Plan 3: Flexible
+            // Plan 4: Savings
+            // Plan 5: Flexible
+            // Plan 6: Regular
+            // Plan 7: Investment
+            // Plan 8: Regular
+            // Plan 9-10: Investment
+            
+            prices.forEach((p, i) => {
+                let category = 'regular';
+                let catLabel = 'Regular';
+                const planNum = i + 1;
+
+                if([3, 5].includes(planNum)) { category = 'flexible'; catLabel = 'Flexible'; }
+                else if([7, 9, 10].includes(planNum)) { category = 'investment'; catLabel = 'Investment'; }
+                else if(planNum === 4) { category = 'savings'; catLabel = 'Savings'; }
+                else { category = 'regular'; catLabel = 'Regular'; }
+
+                const daily = Math.floor(p * 0.4);
+                
+                html += `
+                <div class="glass-card product-card plan-item" data-cat="${category}">
+                    <div class="prod-head">
+                        <div class="prod-tags"><span class="tag tag-vip">VIP ${planNum}</span><span class="tag tag-cat">${catLabel}</span></div>
+                        <h3 style="font-size:0.9rem;">Plan ${planNum}</h3>
+                    </div>
+                    <div class="data-grid">
+                        <div class="d-item"><label>Price</label><span>₹${p}</span></div>
+                        <div class="d-item"><label>Daily</label><span class="highlight">₹${daily}</span></div>
+                        <div class="d-item"><label>Total</label><span class="highlight">₹${daily * 35}</span></div>
+                        <div class="d-item"><label>Days</label><span>35</span></div>
+                    </div>
+                    <!-- Updated Invest Call -->
+                    <button class="btn-primary" onclick="invest(${planNum}, ${p}, ${daily})">Invest Now</button>
+                </div>`;
+            });
+            document.getElementById('plan-list-container').innerHTML = html;
+        }
+
+        // --- UPDATED INVEST FUNCTION ---
+        function invest(level, price, dailyIncome) {
+            // Check balance
+            if(parseFloat(userData.balance) < price) {
+                alert("Insufficient Balance. Please Deposit.");
+                openScreen('deposit-screen');
+                return;
+            }
+
+            // Confirm Purchase
+            if(confirm(`Confirm purchase of Plan ${level} for ₹${price}?`)) {
+                const now = Date.now();
+                const planKey = db.ref('users/'+currentUser+'/activePlans').push().key;
+                
+                let updates = {};
+                // Deduct Balance
+                updates['balance'] = (parseFloat(userData.balance) - price).toFixed(2);
+                // Update VIP
+                if((userData.vipLevel || 0) < level) updates['vipLevel'] = level;
+                
+                // Add Plan Logic (35 Days)
+                updates['activePlans/' + planKey] = {
+                    level: level,
+                    price: price,
+                    dailyIncome: dailyIncome,
+                    daysLeft: 35,
+                    startDate: now,
+                    nextSettlement: now + 86400000 // 24 Hours from now
+                };
+
+                // Add History Record
+                const histKey = db.ref('users/'+currentUser+'/history').push().key;
+                updates['history/' + histKey] = {
+                    type: 'expense',
+                    amount: price,
+                    desc: `Purchased Plan VIP ${level}`,
+                    date: new Date().toLocaleString()
+                };
+
+                db.ref('users/'+currentUser).update(updates).then(() => {
+                    showSuccessPopup('Investment Successful', `You have successfully purchased Plan ${level}. Earnings of ₹${dailyIncome} will be added daily for 35 days.`);
+                });
+            }
+        }
+
+        // --- LOAD HISTORY SCREEN DATA ---
+        function loadHistory() {
+            const container = document.getElementById('earning-list-container');
+            container.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:30px;">Loading history...</div>';
+            
+            db.ref('users/' + currentUser + '/history').once('value', s => {
+                if(!s.exists()) {
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:30px;">No history records found.</div>';
+                    return;
+                }
+                
+                const data = s.val();
+                // Sort by date (conceptually, keys are usually chronological in Firebase, but let's reverse to show newest first)
+                const keys = Object.keys(data).reverse();
+                
+                let html = '';
+                keys.forEach(k => {
+                    const item = data[k];
+                    // Determine color based on type
+                    const color = item.type === 'income' ? '#4ade80' : (item.type === 'expense' ? '#ef4444' : '#fff');
+                    const sign = item.type === 'income' ? '+' : (item.type === 'expense' ? '-' : '');
+                    
+                    html += `
+                    <div class="history-item">
+                        <div>
+                            <h4 style="font-size:0.85rem; margin-bottom:2px;">${item.desc}</h4>
+                            <p style="font-size:0.65rem; color:var(--text-dim);">${item.date}</p>
+                        </div>
+                        <div style="font-weight:600; color:${color}; font-size:0.9rem;">
+                            ${sign}₹${item.amount}
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            });
+        }
+
+        function genTasks() {
+            let html = '';
+            for(let i=1; i<=15; i++) {
+                html += `<div class="glass-card" style="padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;"><div><h4 style="font-size:0.8rem;">Ad View ${i}</h4><p style="font-size:0.6rem; color:var(--text-dim);">₹2.0</p></div><button style="padding:5px 10px; background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:5px; font-size:0.7rem;" onclick="alert('Done')">View</button></div>`;
+            }
+            document.getElementById('task-list-container').innerHTML = html;
+        }
+
+        function openNameModal() {
+            document.getElementById('edit-name-input').value = userData.userName;
+            document.getElementById('name-modal').style.display = 'flex';
+        }
+        function saveNewName() {
+            const val = document.getElementById('edit-name-input').value;
+            if(val && val.length > 2) {
+                db.ref('users/'+currentUser).update({userName: val});
+                document.getElementById('name-modal').style.display = 'none';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('NiveshUserPhone');
+            location.reload();
+        }
+
+        function copyToClip(id) { navigator.clipboard.writeText(document.getElementById(id).innerText).then(()=>alert('Copied')); }
+        function copyLink() { navigator.clipboard.writeText(globalLinks.app).then(()=>alert('Link Copied')); }
+        function openLink(k) { 
+            if(globalLinks[k] && globalLinks[k] !== '#') window.open(globalLinks[k], '_blank'); 
+            else alert('Link not available');
+        }
+
+        function filterPlans(t, b) {
+            // Tab styling
+            document.querySelectorAll('.p-tab').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+
+            const items = document.querySelectorAll('.plan-item');
+            let hasVisible = false;
+
+            items.forEach(item => {
+                // Remove previous animation class to reset
+                item.classList.remove('anim-fade-up');
+
+                if(t === 'all' || item.dataset.cat === t) {
+                    item.style.display = 'block';
+                    // Trigger Reflow to restart animation on element
+                    void item.offsetWidth; 
+                    item.classList.add('anim-fade-up');
+                    hasVisible = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            document.getElementById('plan-list-empty').style.display = hasVisible ? 'none' : 'block';
+        }
+
+        function updateBank() { db.ref('users/'+currentUser+'/bankDetails').set({name: document.getElementById('bank-name').value, acc: document.getElementById('bank-acc').value, ifsc: document.getElementById('bank-ifsc').value}).then(()=>alert('Saved')); }
+        function updatePass() {
+            const n = document.getElementById('new-pass').value, c = document.getElementById('conf-pass').value;
+            if(n===c && n.length>3) db.ref('users/'+currentUser).update({password:n}).then(()=>{alert('Updated');closeScreen('password-screen')});
+            else alert('Error');
+        }
+
+        function openWheel() { document.getElementById('wheel-modal').style.display='flex'; }
+        let spinning = false;
+        function spinWheel() {
+            if(spinning || userData.spinCount <= 0) return;
+            spinning = true;
+            // 0.1 to 5.0 Logic
+            const amt = Math.random() < 0.9 ? 0.2 : (Math.random()*4.9+0.1).toFixed(1);
+            document.getElementById('wheel').style.transform = `rotate(${1800 + Math.random()*360}deg)`;
+            setTimeout(() => {
+                db.ref('users/'+currentUser).update({balance: (parseFloat(userData.balance)+parseFloat(amt)).toFixed(2), spinCount: userData.spinCount-1});
+                showSuccessPopup('You Won Cash!', `Congratulations! You have won ₹${amt} in the lucky spin.`);
+                document.getElementById('wheel').style.transition='none';
+                document.getElementById('wheel').style.transform='rotate(0deg)';
+                setTimeout(()=>document.getElementById('wheel').style.transition='transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)', 50);
+                spinning = false;
+            }, 4000);
+        }
+
+        /* --- Realistic Popups Logic --- */
+        function showSuccessPopup(title, msg) {
+            document.getElementById('popup-title').innerText = title;
+            document.getElementById('popup-msg').innerText = msg;
+            document.getElementById('success-modal').style.display = 'flex';
+        }
+
+        // --- WELCOME MODAL LOGIC ---
+        function showWelcomeModal() {
+            document.getElementById('welcome-modal').style.display = 'flex';
+        }
+
+        function handleDepositClick() {
+            const amt = document.getElementById('dep-amount').value;
+            if(amt > 0) {
+                // Realistic Popup Trigger
+                showSuccessPopup('Payment Initiated', `Your deposit request for ₹${amt} has been initiated securely. Please complete the payment to reflect balance.`);
+            } else {
+                alert("Please enter a valid amount.");
+            }
+        }
+
+        function handleWithdrawClick() {
+            const amt = document.getElementById('with-amount').value;
+            // Check if bank details filled (dummy check logic as per requirement)
+            const bankName = document.getElementById('w-bank-name').innerText;
+            
+            if(amt > 0 && bankName !== "Not Set" && bankName !== "--") {
+                showSuccessPopup('Withdrawal Successful', `Your withdrawal request for ₹${amt} has been submitted successfully to your bank account. Funds will arrive within 24 hours.`);
+            } else {
+                if(amt <= 0) alert("Invalid amount.");
+                else alert("Please bind your bank card first.");
+            }
+        }
+    </script>
+</body>
+</html> 
